@@ -35,11 +35,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [4/4] Starting server with Maven debug logs ...
+echo [4/4] Building demo module (refresh web resources) and starting server ...
 echo SERVER_SCHEME=%SERVER_SCHEME%
 echo CALLBACK_PORT=%CALLBACK_PORT%
 
-mvn -e -X -f corpid-login-demo/pom.xml exec:java
+REM -am builds corpid-helper dependency; compile copies src/main/resources/web/login.html
+REM into target/classes so the served page reflects the latest HTML changes.
+mvn -e -X -pl corpid-login-demo -am compile exec:java
 set "rc=%ERRORLEVEL%"
 
 echo.
