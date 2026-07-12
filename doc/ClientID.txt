@@ -1,0 +1,4 @@
+Client ID : ff976a377a5e44ddbb2e9b9b972e442f
+Client Secret : 34ca1e381d6497d8e8f4ffdddd317d781abba40ba5ee4c5cd55fceb0006e0610
+
+KEK certificate (Encipherment Cert): account-centre-kek.p12

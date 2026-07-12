@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CorpID Login Demo</title>
+  <style>
+    :root {
+      --bg: #f8f5ef;
+      --card: #fffdfa;
+      --ink: #1f2a37;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-2: #0ea5a4;
+      --ok: #0f766e;
+      --err: #b91c1c;
+      --line: #e5e7eb;
+      --pending: #9ca3af;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 110% -20%, rgba(14,165,164,0.15), transparent 60%),
+        radial-gradient(800px 400px at -20% 120%, rgba(15,118,110,0.12), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .panel {
+      width: min(860px, 100%);
+      background: var(--card);
+      border: 1px solid #ece8de;
+      border-radius: 16px;
+      box-shadow: 0 20px 45px rgba(35, 45, 56, 0.10);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 24px 24px 18px;
+      background: linear-gradient(90deg, rgba(15,118,110,0.10), rgba(14,165,164,0.04));
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 32px);
+      letter-spacing: .4px;
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .content {
+      padding: 20px 24px 26px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 20px rgba(15,118,110,.25);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .6;
+      box-shadow: none;
+    }
+
+    .state-box {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 8px 10px;
+      background: #f7f7f7;
+      border: 1px dashed #d1d5db;
+      border-radius: 8px;
+    }
+
+    .step-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+      background: white;
+    }
+
+    .step:first-child { border-top: 0; }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--pending);
+      justify-self: center;
+    }
+
+    .step.done .dot { background: var(--ok); }
+    .step.active .dot { background: #d97706; }
+    .step.error .dot { background: var(--err); }
+
+    .name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .status.done { color: var(--ok); }
+    .status.active { color: #b45309; }
+    .status.error { color: var(--err); }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 14px;
+      color: var(--muted);
+      min-height: 22px;
+    }
+
+    .token-card {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid #d1fae5;
+      border-radius: 10px;
+      background: #ecfdf5;
+      font-size: 13px;
+      line-height: 1.6;
+      display: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .select-company-card {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      background: #eff6ff;
+      display: none;
+      font-size: 14px;
+    }
+
+    .select-company-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .select-company-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .select-company-row select {
+      border: 1px solid #93c5fd;
+      border-radius: 8px;
+      padding: 8px;
+      min-width: 220px;
+      background: #fff;
+    }
+
+    .prefill-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .prefill-actions button {
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 720px) {
+      .step {
+        grid-template-columns: 24px 1fr;
+      }
+      .status {
+        grid-column: 2;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <section class="hero">
+      <h1>CorpID Login Flow</h1>
+      <div class="sub">點擊 Login 後，系統會由 project 呼叫 corpid-helper lib 進行 iAM 與 CorpID 的 token 交換，並在此頁顯示步驟進度。</div>
+    </section>
+
+    <section class="content">
+      <div class="actions">
+        <button id="loginBtn">Login with iAM Smart + CorpID</button>
+        <div id="stateBox" class="state-box">state: (尚未開始)</div>
+      </div>
+
+      <ol id="steps" class="step-list"></ol>
+      <div id="message" class="footer"></div>
+      <div id="selectCompanyCard" class="select-company-card">
+        <div id="selectCompanyTitle" class="select-company-title">Select Company</div>
+        <div class="select-company-row">
+          <select id="companySelect"></select>
+          <button id="companyConfirmBtn" type="button">Confirm Company</button>
+        </div>
+        <div class="prefill-actions">
+          <button id="prefillBtn" type="button">Prefill Button</button>
+          <button id="anonPrefillBtn" type="button">Anon Prefill Button</button>
+        </div>
+      </div>
+      <pre id="tokenCard" class="token-card"></pre>
+    </section>
+  </main>
+
+  <script>
+    const STEP_NAMES = [
+      "Step 1. 建立登入請求（project）",
+      "Step 2. 導向 iAM Smart / CorpID 驗證頁",
+      "Step 3. 收到 callback（含 code / cAuthCode）",
+      "Step 4. 透過 lib 交換 iAM token",
+      "Step 5. 透過 lib 交換 CorpID token",
+      "Step 6. CorpID Login 完成",
+      "Step 7. Select Company"
+    ];
+
+    const loginBtn = document.getElementById("loginBtn");
+    const stepsEl = document.getElementById("steps");
+    const msgEl = document.getElementById("message");
+    const stateBox = document.getElementById("stateBox");
+    const tokenCard = document.getElementById("tokenCard");
+    const selectCompanyCard = document.getElementById("selectCompanyCard");
+    const selectCompanyTitle = document.getElementById("selectCompanyTitle");
+    const companySelect = document.getElementById("companySelect");
+    const companyConfirmBtn = document.getElementById("companyConfirmBtn");
+    const prefillBtn = document.getElementById("prefillBtn");
+    const anonPrefillBtn = document.getElementById("anonPrefillBtn");
+
+    let state = getStateFromUrl() || localStorage.getItem("corpid_demo_state") || "";
+    let timer = null;
+
+    renderSteps({
+      currentStep: 0,
+      status: "IDLE",
+      errorMessage: ""
+    });
+    if (state) {
+      stateBox.textContent = "state: " + state;
+      startPolling();
+    }
+
+    loginBtn.addEventListener("click", async () => {
+      loginBtn.disabled = true;
+      msgEl.textContent = "正在跳轉至登入...";
+      tokenCard.style.display = "none";
+      selectCompanyCard.style.display = "none";
+      window.location.href = "/start-login";
+    });
+
+    companyConfirmBtn.addEventListener("click", async () => {
+      if (!state || !companySelect.value) return;
+      companyConfirmBtn.disabled = true;
+      try {
+        const res = await fetch(
+          "/api/company/select?state=" + encodeURIComponent(state) + "&company=" + encodeURIComponent(companySelect.value),
+          { method: "POST" }
+        );
+        if (!res.ok) {
+          msgEl.textContent = "Select company 失敗";
+          return;
+        }
+        selectCompanyCard.style.display = "none";
+        await fetchProgress();
+      } finally {
+        companyConfirmBtn.disabled = false;
+      }
+    });
+
+    prefillBtn.addEventListener("click", async () => {
+      await runPrefill("normal");
+    });
+
+    anonPrefillBtn.addEventListener("click", async () => {
+      await runPrefill("anon");
+    });
+
+    function getStateFromUrl() {
+      const params = new URLSearchParams(location.search);
+      return params.get("state") || "";
+    }
+
+    function startPolling() {
+      if (!state) return;
+      if (timer) clearInterval(timer);
+      timer = setInterval(fetchProgress, 1200);
+      fetchProgress();
+    }
+
+    async function fetchProgress() {
+      try {
+        const res = await fetch("/api/progress?state=" + encodeURIComponent(state));
+        if (!res.ok) return;
+        const data = await res.json();
+        renderSteps(data.progress);
+
+        if (data.companySelection && data.companySelection.requiresSelection) {
+          renderCompanySelection(data.companySelection);
+          msgEl.textContent = "請先選擇公司。";
+        } else if (data.companySelection && data.companySelection.prefillReady && !data.companySelection.prefillCompleted) {
+          selectCompanyCard.style.display = "block";
+          companyConfirmBtn.disabled = true;
+          prefillBtn.disabled = false;
+          anonPrefillBtn.disabled = false;
+          msgEl.textContent = "請按 Prefill Button 或 Anon Prefill Button。";
+        } else {
+          selectCompanyCard.style.display = "none";
+        }
+
+        if (data.progress.status === "DONE") {
+          if (data.progress.checklistCompleted) {
+            const modeText = data.progress.prefillMode === "anon" ? "Anon Prefill" : "Prefill";
+            msgEl.textContent = "登入成功，Select Company + " + modeText + " 已完成。";
+          } else if (data.progress.hasIamToken && !data.progress.hasCorpidToken) {
+            const reason = data.progress.corpidUnavailableReason || "Callback missing cAuthCode";
+            msgEl.textContent = "iAM token 已成功，但 CorpID token / checklist 未完成: " + reason;
+          } else {
+            msgEl.textContent = "流程已完成，但 checklist 未完成。";
+          }
+          if (data.tokenSummary) {
+            tokenCard.style.display = "block";
+            tokenCard.textContent = data.tokenSummary;
+          }
+          clearInterval(timer);
+          loginBtn.disabled = false;
+        } else if (data.progress.status === "ERROR") {
+          msgEl.textContent = "流程失敗: " + (data.progress.errorMessage || "unknown error");
+          clearInterval(timer);
+          loginBtn.disabled = false;
+        }
+      } catch (_) {
+      }
+    }
+
+    function renderCompanySelection(selection) {
+      if (!selection || !selection.options || selection.options.length === 0) {
+        selectCompanyCard.style.display = "none";
+        return;
+      }
+      selectCompanyCard.style.display = "block";
+      selectCompanyTitle.textContent = "Select Company (corpCount=" + (selection.corpCount || selection.options.length) + ")";
+      companySelect.innerHTML = "";
+      selection.options.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt;
+        option.textContent = opt;
+        if (selection.selectedCompany && selection.selectedCompany === opt) {
+          option.selected = true;
+        }
+        companySelect.appendChild(option);
+      });
+      companyConfirmBtn.disabled = !selection.requiresSelection;
+      prefillBtn.disabled = !selection.prefillReady || selection.prefillCompleted;
+      anonPrefillBtn.disabled = !selection.prefillReady || selection.prefillCompleted;
+    }
+
+    async function runPrefill(type) {
+      if (!state) return;
+      prefillBtn.disabled = true;
+      anonPrefillBtn.disabled = true;
+      try {
+        const res = await fetch(
+          "/api/prefill?state=" + encodeURIComponent(state) + "&type=" + encodeURIComponent(type),
+          { method: "POST" }
+        );
+        if (!res.ok) {
+          msgEl.textContent = (type === "anon" ? "Anon Prefill" : "Prefill") + " 失敗";
+          return;
+        }
+        await fetchProgress();
+      } finally {
+        prefillBtn.disabled = false;
+        anonPrefillBtn.disabled = false;
+      }
+    }
+
+    function renderSteps(progress) {
+      stepsEl.innerHTML = "";
+      const current = progress.currentStep || 0;
+      const isErr = progress.status === "ERROR";
+
+      STEP_NAMES.forEach((name, idx) => {
+        const stepNo = idx + 1;
+        const li = document.createElement("li");
+        li.className = "step";
+
+        let status = "pending";
+        if (stepNo < current) status = "done";
+        else if (stepNo === current) status = isErr ? "error" : "active";
+        if (progress.status === "DONE" && stepNo <= current) status = "done";
+
+        li.classList.add(status);
+
+        const dot = document.createElement("span");
+        dot.className = "dot";
+
+        const label = document.createElement("span");
+        label.className = "name";
+        label.textContent = name;
+
+        const state = document.createElement("span");
+        state.className = "status " + status;
+        state.textContent = status;
+
+        li.appendChild(dot);
+        li.appendChild(label);
+        li.appendChild(state);
+        stepsEl.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
