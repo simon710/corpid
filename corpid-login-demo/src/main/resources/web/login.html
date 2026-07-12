@@ -24,6 +24,7 @@
       --warn: #d97706;
       --err: #dc2626;
       --pending: #cbd5e1;
+      --drawer-w: 420px;
     }
 
     * { box-sizing: border-box; }
@@ -157,91 +158,9 @@
       font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
     }
 
-    /* ---- Collapsible (Checklist / Log) ---- */
-    .collapsible {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 16px;
-      padding: 13px 16px;
-      background: linear-gradient(135deg, #f8fafc, #eef4f8);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      cursor: pointer;
-      user-select: none;
-      font-weight: 700;
-      font-size: 14.5px;
-      color: var(--navy);
-      transition: background .12s ease;
-    }
-    .collapsible:hover { background: linear-gradient(135deg, #f1f6fa, #e7eff5); }
-    .collapsible .chev {
-      width: 18px; height: 18px; flex: none;
-      transition: transform .25s ease;
-      color: var(--iam-teal-d);
-    }
-    .collapsible.open .chev { transform: rotate(90deg); }
-    .collapsible .c-tag {
-      margin-left: auto;
-      font-size: 11px; font-weight: 700;
-      color: var(--muted);
-      background: #fff; border: 1px solid var(--line);
-      padding: 3px 9px; border-radius: 999px;
-      letter-spacing: .3px;
-    }
-
-    .collapsible-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height .32s ease;
-    }
-    .collapsible-content.open { max-height: 4000px; }
-    .collapsible-inner { padding: 14px 4px 2px; }
-
-    /* ---- Checklist steps ---- */
-    .step-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .step {
-      display: grid;
-      grid-template-columns: 30px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      padding: 13px 16px;
-      border-top: 1px solid var(--line);
-      background: #fff;
-    }
-    .step:first-child { border-top: 0; }
-    .dot {
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      background: var(--pending);
-      justify-self: center;
-      position: relative;
-      transition: background .2s ease;
-    }
-    .step.done .dot { background: var(--ok); }
-    .step.active .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(217,119,6,.18); }
-    .step.error .dot { background: var(--err); }
-    .name { font-size: 14px; font-weight: 600; }
-    .status {
-      font-size: 11.5px; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .06em;
-      font-weight: 700;
-    }
-    .status.done { color: var(--ok); }
-    .status.active { color: var(--warn); }
-    .status.error { color: var(--err); }
-
     /* ---- Footer message ---- */
     .footer {
-      margin-top: 16px;
+      margin-top: 4px;
       font-size: 14px;
       color: var(--muted);
       min-height: 22px;
@@ -277,6 +196,185 @@
     }
     .prefill-actions button:disabled { opacity: .5; cursor: not-allowed; }
 
+    /* =====================================================================
+       RIGHT SLIDE-IN DRAWER (mobile-menu style)
+       Holds Login Progress Checklist + Response Log.
+       Hidden by default -> before opening, only Button + message visible.
+    ===================================================================== */
+
+    /* Fixed tab handle on the right edge */
+    .drawer-handle {
+      position: fixed;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 16px 14px 18px;
+      border: 0;
+      border-radius: 14px 0 0 14px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13.5px;
+      letter-spacing: .3px;
+      background: linear-gradient(135deg, var(--iam-teal), var(--iam-blue));
+      box-shadow: -8px 10px 26px rgba(22,38,58,.28);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transition: filter .12s ease, transform .12s ease, opacity .2s ease;
+    }
+    .drawer-handle:hover { filter: brightness(1.05); transform: translateY(-50%) translateX(-2px); }
+    .drawer-handle .h-icon { writing-mode: horizontal-tb; width: 18px; height: 18px; }
+    .drawer-handle .h-dot {
+      writing-mode: horizontal-tb;
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #fff; opacity: .55;
+    }
+    .drawer-handle.pulse .h-dot { animation: pulse 1.2s ease-in-out infinite; opacity: 1; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.5); opacity: 1; } }
+    body.drawer-open .drawer-handle { opacity: 0; pointer-events: none; }
+
+    /* Dim overlay */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,25,40,.42);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .28s ease, visibility .28s ease;
+      z-index: 50;
+    }
+    body.drawer-open .drawer-overlay { opacity: 1; visibility: visible; }
+
+    /* The drawer panel */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: min(var(--drawer-w), 100%);
+      background: var(--card);
+      box-shadow: -18px 0 50px rgba(22,38,58,.28);
+      transform: translateX(100%);
+      transition: transform .32s cubic-bezier(.4,0,.2,1);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+    }
+    body.drawer-open .drawer { transform: translateX(0); }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      background: linear-gradient(120deg, rgba(58,160,141,.16), rgba(48,147,193,.08));
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-head .d-badge {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--iam-teal), var(--iam-blue));
+      display: grid; place-items: center; flex: none;
+    }
+    .drawer-head .d-badge svg { width: 20px; height: 20px; }
+    .drawer-head .d-title { font-weight: 800; color: var(--navy); font-size: 16px; }
+    .drawer-head .d-title small { display: block; font-weight: 600; color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+    .drawer-close {
+      margin-left: auto;
+      border: 1px solid var(--line);
+      background: #fff;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: grid; place-items: center;
+      color: var(--muted);
+      transition: background .12s ease, color .12s ease;
+    }
+    .drawer-close:hover { background: #f1f5f9; color: var(--ink); }
+    .drawer-close svg { width: 18px; height: 18px; }
+
+    /* Internal tabs: Checklist | Log */
+    .drawer-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-tab {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 11px 10px 13px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color .12s ease, border-color .12s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .drawer-tab .t-count {
+      font-size: 11px; font-weight: 700;
+      background: #eef2f6; color: var(--muted);
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .drawer-tab.active { color: var(--iam-teal-d); border-bottom-color: var(--iam-teal); }
+    .drawer-tab.active .t-count { background: rgba(58,160,141,.14); color: var(--iam-teal-d); }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 16px 22px;
+    }
+
+    /* tab panes */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fade .2s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* ---- Checklist steps ---- */
+    .step-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 14px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+    .step:first-child { border-top: 0; }
+    .dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--pending);
+      justify-self: center;
+      position: relative;
+      transition: background .2s ease;
+    }
+    .step.done .dot { background: var(--ok); }
+    .step.active .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(217,119,6,.18); }
+    .step.error .dot { background: var(--err); }
+    .name { font-size: 13.5px; font-weight: 600; }
+    .status {
+      font-size: 11px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      font-weight: 700;
+    }
+    .status.done { color: var(--ok); }
+    .status.active { color: var(--warn); }
+    .status.error { color: var(--err); }
+
     /* ---- Log ---- */
     .token-card {
       margin: 0;
@@ -290,12 +388,15 @@
       font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
       white-space: pre-wrap;
       word-break: break-word;
+      min-height: 60px;
     }
+    .log-empty { color: var(--muted); font-size: 13px; padding: 6px 2px; }
 
     @media (max-width: 720px) {
       .step { grid-template-columns: 26px 1fr; }
       .status { grid-column: 2; }
       .brand-tag { display: none; }
+      :root { --drawer-w: 100%; }
     }
   </style>
 </head>
@@ -323,7 +424,7 @@
   <main class="panel">
     <section class="hero">
       <h1>Secure Corporate Login</h1>
-      <div class="sub">點擊下方按鈕以 iAM Smart 身份登入，系統會呼叫 corpid-helper 進行 CorpID token 交換，並於下方清單顯示步驟進度。</div>
+      <div class="sub">點擊下方按鈕以 iAM Smart 身份登入，系統會呼叫 corpid-helper 進行 CorpID token 交換。步驟進度與回應記錄可於右側面板查看。</div>
     </section>
 
     <section class="content">
@@ -342,17 +443,6 @@
         <div id="stateBox" class="state-box">state: (尚未開始)</div>
       </div>
 
-      <div class="collapsible" id="checklistToggle" type="button">
-        <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Login Progress Checklist</span>
-        <span class="c-tag" id="checklistTag">7 steps</span>
-      </div>
-      <div class="collapsible-content" id="checklistContent">
-        <div class="collapsible-inner">
-          <ol id="steps" class="step-list"></ol>
-        </div>
-      </div>
-
       <div id="message" class="footer"></div>
 
       <div id="selectCompanyCard" class="select-company-card">
@@ -366,19 +456,58 @@
           <button id="anonPrefillBtn" type="button">Anon Prefill Button</button>
         </div>
       </div>
-
-      <div class="collapsible" id="logToggle" type="button">
-        <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Response Log</span>
-        <span class="c-tag">iAM / CorpID token + checklist</span>
-      </div>
-      <div class="collapsible-content" id="logContent">
-        <div class="collapsible-inner">
-          <pre id="tokenCard" class="token-card"></pre>
-        </div>
-      </div>
     </section>
   </main>
+
+  <!-- ===== Right slide-in drawer (hidden by default) ===== -->
+  <button class="drawer-handle" id="drawerHandle" type="button" aria-label="開啟進度面板">
+    <svg class="h-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 6l-6 6 6 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>進度 / 記錄</span>
+    <span class="h-dot"></span>
+  </button>
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <span class="d-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.4 12.2l2.5 2.5 4.7-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.6" fill="none"/>
+        </svg>
+      </span>
+      <div class="d-title">
+        Login Progress
+        <small>iAM Smart + CorpID token flow</small>
+      </div>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="關閉">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-tabs">
+      <button class="drawer-tab active" id="checklistToggle" type="button" data-tab="checklist">
+        Checklist <span class="t-count" id="checklistTag">7</span>
+      </button>
+      <button class="drawer-tab" id="logToggle" type="button" data-tab="log">
+        Response Log
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="tab-pane active" id="checklistContent">
+        <ol id="steps" class="step-list"></ol>
+      </div>
+      <div class="tab-pane" id="logContent">
+        <pre id="tokenCard" class="token-card"></pre>
+        <div class="log-empty" id="logEmpty">尚未有 token / checklist 記錄。</div>
+      </div>
+    </div>
+  </aside>
 
   <script>
     const STEP_NAMES = [
@@ -396,6 +525,7 @@
     const msgEl = document.getElementById("message");
     const stateBox = document.getElementById("stateBox");
     const tokenCard = document.getElementById("tokenCard");
+    const logEmpty = document.getElementById("logEmpty");
     const selectCompanyCard = document.getElementById("selectCompanyCard");
     const selectCompanyTitle = document.getElementById("selectCompanyTitle");
     const companySelect = document.getElementById("companySelect");
@@ -403,29 +533,46 @@
     const prefillBtn = document.getElementById("prefillBtn");
     const anonPrefillBtn = document.getElementById("anonPrefillBtn");
 
-    // Collapsible elements
+    // Drawer + tabs
+    const drawer = document.getElementById("drawer");
+    const drawerHandle = document.getElementById("drawerHandle");
+    const drawerOverlay = document.getElementById("drawerOverlay");
+    const drawerClose = document.getElementById("drawerClose");
     const checklistToggle = document.getElementById("checklistToggle");
-    const checklistContent = document.getElementById("checklistContent");
     const logToggle = document.getElementById("logToggle");
+    const checklistContent = document.getElementById("checklistContent");
     const logContent = document.getElementById("logContent");
 
-    function toggleCollapse(btn, content) {
-      const open = content.classList.toggle("open");
-      btn.classList.toggle("open", open);
+    function openDrawer() {
+      document.body.classList.add("drawer-open");
+      drawer.setAttribute("aria-hidden", "false");
+      drawerHandle.classList.remove("pulse");
     }
-    checklistToggle.addEventListener("click", () => toggleCollapse(checklistToggle, checklistContent));
-    logToggle.addEventListener("click", () => toggleCollapse(logToggle, logContent));
-    function openChecklist() {
-      if (!checklistContent.classList.contains("open")) {
-        checklistContent.classList.add("open");
-        checklistToggle.classList.add("open");
-      }
+    function closeDrawer() {
+      document.body.classList.remove("drawer-open");
+      drawer.setAttribute("aria-hidden", "true");
     }
-    function openLog() {
-      if (!logContent.classList.contains("open")) {
-        logContent.classList.add("open");
-        logToggle.classList.add("open");
-      }
+    function selectTab(tab) {
+      const isLog = tab === "log";
+      checklistToggle.classList.toggle("active", !isLog);
+      logToggle.classList.toggle("active", isLog);
+      checklistContent.classList.toggle("active", !isLog);
+      logContent.classList.toggle("active", isLog);
+    }
+
+    drawerHandle.addEventListener("click", openDrawer);
+    drawerOverlay.addEventListener("click", closeDrawer);
+    drawerClose.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+    checklistToggle.addEventListener("click", () => selectTab("checklist"));
+    logToggle.addEventListener("click", () => selectTab("log"));
+
+    // Backward-compatible helpers: open drawer on the relevant tab.
+    function openChecklist() { openDrawer(); selectTab("checklist"); }
+    function openLog() { openDrawer(); selectTab("log"); }
+    // Draw attention to the handle when there is progress but drawer is closed.
+    function nudgeHandle() {
+      if (!document.body.classList.contains("drawer-open")) drawerHandle.classList.add("pulse");
     }
 
     let state = getStateFromUrl() || localStorage.getItem("corpid_demo_state") || "";
@@ -446,7 +593,6 @@
       msgEl.textContent = "正在跳轉至登入...";
       tokenCard.style.display = "none";
       selectCompanyCard.style.display = "none";
-      openChecklist();
       window.location.href = "/start-login";
     });
 
@@ -495,6 +641,7 @@
         if (!res.ok) return;
         const data = await res.json();
         renderSteps(data.progress);
+        nudgeHandle();
 
         if (data.companySelection && data.companySelection.requiresSelection) {
           renderCompanySelection(data.companySelection);
@@ -522,7 +669,7 @@
           if (data.tokenSummary) {
             tokenCard.style.display = "block";
             tokenCard.textContent = data.tokenSummary;
-            openLog();
+            if (logEmpty) logEmpty.style.display = "none";
           }
           clearInterval(timer);
           loginBtn.disabled = false;
@@ -531,8 +678,8 @@
           if (data.tokenSummary) {
             tokenCard.style.display = "block";
             tokenCard.textContent = data.tokenSummary;
+            if (logEmpty) logEmpty.style.display = "none";
           }
-          openLog();
           clearInterval(timer);
           loginBtn.disabled = false;
         }
