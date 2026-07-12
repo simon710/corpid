@@ -3,104 +3,203 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CorpID Login Demo</title>
+  <title>CorpID Login · Secure Corporate Identity</title>
   <style>
     :root {
-      --bg: #f8f5ef;
-      --card: #fffdfa;
+      /* iAM Smart official palette (from iamsmart.gov.hk logo SVG) */
+      --iam-teal: #3AA08D;
+      --iam-teal-d: #2E8C7A;
+      --iam-blue: #3093C1;
+      --iam-orange: #DB7918;
+      --iam-yellow: #E9C130;
+      --iam-green: #80B244;
+
+      --navy: #16263a;
       --ink: #1f2a37;
-      --muted: #6b7280;
-      --accent: #0f766e;
-      --accent-2: #0ea5a4;
-      --ok: #0f766e;
-      --err: #b91c1c;
-      --line: #e5e7eb;
-      --pending: #9ca3af;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #eef2f6;
+      --card: #ffffff;
+      --ok: #1d9a6c;
+      --warn: #d97706;
+      --err: #dc2626;
+      --pending: #cbd5e1;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      font-family: "Segoe UI", "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(1200px 600px at 110% -20%, rgba(14,165,164,0.15), transparent 60%),
-        radial-gradient(800px 400px at -20% 120%, rgba(15,118,110,0.12), transparent 60%),
+        radial-gradient(1100px 520px at 105% -15%, rgba(48,147,193,0.14), transparent 60%),
+        radial-gradient(820px 420px at -15% 115%, rgba(58,160,141,0.12), transparent 60%),
         var(--bg);
       min-height: 100vh;
       display: grid;
       place-items: center;
-      padding: 20px;
+      padding: 22px;
     }
 
+    /* ---- Brand bar ---- */
+    .brandbar {
+      width: min(880px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px 14px;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-badge {
+      width: 42px; height: 42px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--iam-teal), var(--iam-blue));
+      display: grid; place-items: center;
+      box-shadow: 0 8px 18px rgba(48,147,193,.35);
+      flex: none;
+    }
+    .brand-badge svg { width: 26px; height: 26px; }
+    .brand-text { line-height: 1.15; }
+    .brand-text strong {
+      font-size: 19px; letter-spacing: .2px;
+      color: var(--navy);
+    }
+    .brand-text span {
+      font-size: 13px; color: var(--muted); font-weight: 600;
+      display: block; margin-top: 1px;
+    }
+    .brand-tag {
+      font-size: 12px; color: var(--muted);
+      background: #fff; border: 1px solid var(--line);
+      padding: 6px 12px; border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    /* ---- Panel ---- */
     .panel {
-      width: min(860px, 100%);
+      width: min(880px, 100%);
       background: var(--card);
-      border: 1px solid #ece8de;
-      border-radius: 16px;
-      box-shadow: 0 20px 45px rgba(35, 45, 56, 0.10);
+      border: 1px solid #e6ebf1;
+      border-radius: 18px;
+      box-shadow: 0 24px 60px rgba(22,38,58,.12);
       overflow: hidden;
     }
 
     .hero {
-      padding: 24px 24px 18px;
-      background: linear-gradient(90deg, rgba(15,118,110,0.10), rgba(14,165,164,0.04));
+      padding: 26px 28px 20px;
+      background: linear-gradient(120deg, rgba(58,160,141,.14), rgba(48,147,193,.06));
       border-bottom: 1px solid var(--line);
+      position: relative;
     }
-
+    .hero::after {
+      content: "";
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 5px;
+      background: linear-gradient(180deg, var(--iam-teal), var(--iam-blue));
+    }
     h1 {
       margin: 0;
-      font-size: clamp(24px, 4vw, 32px);
-      letter-spacing: .4px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: .3px;
+      color: var(--navy);
     }
-
     .sub {
       margin-top: 8px;
       color: var(--muted);
-      line-height: 1.5;
-      font-size: 15px;
+      line-height: 1.55;
+      font-size: 14.5px;
+      max-width: 640px;
     }
 
-    .content {
-      padding: 20px 24px 26px;
-    }
+    .content { padding: 22px 28px 28px; }
 
     .actions {
       display: flex;
-      gap: 12px;
+      gap: 14px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
 
-    button {
+    /* ---- iAM Smart branded login button ---- */
+    .iam-btn {
       border: 0;
       border-radius: 12px;
-      padding: 12px 18px;
-      font-size: 15px;
+      padding: 14px 22px;
+      font-size: 15.5px;
       font-weight: 700;
       cursor: pointer;
-      color: white;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 10px 20px rgba(15,118,110,.25);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--iam-teal) 0%, var(--iam-blue) 100%);
+      box-shadow: 0 12px 24px rgba(48,147,193,.30);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
     }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: .6;
-      box-shadow: none;
-    }
+    .iam-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(48,147,193,.40); filter: brightness(1.03); }
+    .iam-btn:active { transform: translateY(0); }
+    .iam-btn:disabled { cursor: not-allowed; opacity: .6; box-shadow: none; transform: none; filter: none; }
+    .iam-btn .lock { width: 20px; height: 20px; flex: none; }
+    .iam-btn .label { text-align: left; line-height: 1.1; }
+    .iam-btn .label small { display: block; font-size: 11px; font-weight: 600; opacity: .85; letter-spacing: .3px; }
 
     .state-box {
       color: var(--muted);
-      font-size: 13px;
-      padding: 8px 10px;
-      background: #f7f7f7;
-      border: 1px dashed #d1d5db;
-      border-radius: 8px;
+      font-size: 12.5px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 9px;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
     }
 
+    /* ---- Collapsible (Checklist / Log) ---- */
+    .collapsible {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 13px 16px;
+      background: linear-gradient(135deg, #f8fafc, #eef4f8);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 700;
+      font-size: 14.5px;
+      color: var(--navy);
+      transition: background .12s ease;
+    }
+    .collapsible:hover { background: linear-gradient(135deg, #f1f6fa, #e7eff5); }
+    .collapsible .chev {
+      width: 18px; height: 18px; flex: none;
+      transition: transform .25s ease;
+      color: var(--iam-teal-d);
+    }
+    .collapsible.open .chev { transform: rotate(90deg); }
+    .collapsible .c-tag {
+      margin-left: auto;
+      font-size: 11px; font-weight: 700;
+      color: var(--muted);
+      background: #fff; border: 1px solid var(--line);
+      padding: 3px 9px; border-radius: 999px;
+      letter-spacing: .3px;
+    }
+
+    .collapsible-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .32s ease;
+    }
+    .collapsible-content.open { max-height: 4000px; }
+    .collapsible-inner { padding: 14px 4px 2px; }
+
+    /* ---- Checklist steps ---- */
     .step-list {
       margin: 0;
       padding: 0;
@@ -109,146 +208,175 @@
       border-radius: 12px;
       overflow: hidden;
     }
-
     .step {
       display: grid;
-      grid-template-columns: 28px 1fr auto;
-      gap: 10px;
+      grid-template-columns: 30px 1fr auto;
+      gap: 12px;
       align-items: center;
-      padding: 12px 14px;
+      padding: 13px 16px;
       border-top: 1px solid var(--line);
-      background: white;
+      background: #fff;
     }
-
     .step:first-child { border-top: 0; }
-
     .dot {
-      width: 14px;
-      height: 14px;
+      width: 16px; height: 16px;
       border-radius: 50%;
       background: var(--pending);
       justify-self: center;
+      position: relative;
+      transition: background .2s ease;
     }
-
     .step.done .dot { background: var(--ok); }
-    .step.active .dot { background: #d97706; }
+    .step.active .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(217,119,6,.18); }
     .step.error .dot { background: var(--err); }
-
-    .name {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
+    .name { font-size: 14px; font-weight: 600; }
     .status {
-      font-size: 12px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .06em;
+      font-size: 11.5px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      font-weight: 700;
     }
-
     .status.done { color: var(--ok); }
-    .status.active { color: #b45309; }
+    .status.active { color: var(--warn); }
     .status.error { color: var(--err); }
 
+    /* ---- Footer message ---- */
     .footer {
-      margin-top: 14px;
+      margin-top: 16px;
       font-size: 14px;
       color: var(--muted);
       min-height: 22px;
     }
 
-    .token-card {
-      margin-top: 14px;
-      padding: 12px;
-      border: 1px solid #d1fae5;
-      border-radius: 10px;
-      background: #ecfdf5;
-      font-size: 13px;
-      line-height: 1.6;
+    /* ---- Company selection ---- */
+    .select-company-card {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid #cfe3ee;
+      border-radius: 12px;
+      background: #f1f8fc;
       display: none;
+      font-size: 14px;
+    }
+    .select-company-title { font-weight: 700; margin-bottom: 10px; color: var(--navy); }
+    .select-company-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .select-company-row select {
+      border: 1px solid #93c5fd; border-radius: 9px;
+      padding: 9px 10px; min-width: 240px; background: #fff; font-size: 14px;
+    }
+    .mini-btn {
+      border: 0; border-radius: 10px; padding: 10px 16px;
+      font-size: 13.5px; font-weight: 700; cursor: pointer; color: #fff;
+      background: linear-gradient(135deg, var(--iam-teal), var(--iam-blue));
+      box-shadow: 0 8px 16px rgba(48,147,193,.28);
+    }
+    .mini-btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+    .prefill-actions { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .prefill-actions button {
+      border: 1px solid #cfe3ee; background: #fff; color: var(--navy);
+      border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .prefill-actions button:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ---- Log ---- */
+    .token-card {
+      margin: 0;
+      padding: 14px 16px;
+      border: 1px solid #d7e9e2;
+      border-radius: 12px;
+      background: #0f2233;
+      color: #c8f0e4;
+      font-size: 12.5px;
+      line-height: 1.6;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    .select-company-card {
-      margin-top: 14px;
-      padding: 12px;
-      border: 1px solid #bfdbfe;
-      border-radius: 10px;
-      background: #eff6ff;
-      display: none;
-      font-size: 14px;
-    }
-
-    .select-company-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .select-company-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .select-company-row select {
-      border: 1px solid #93c5fd;
-      border-radius: 8px;
-      padding: 8px;
-      min-width: 220px;
-      background: #fff;
-    }
-
-    .prefill-actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .prefill-actions button {
-      padding: 10px 14px;
-      font-size: 13px;
-    }
-
     @media (max-width: 720px) {
-      .step {
-        grid-template-columns: 24px 1fr;
-      }
-      .status {
-        grid-column: 2;
-      }
+      .step { grid-template-columns: 26px 1fr; }
+      .status { grid-column: 2; }
+      .brand-tag { display: none; }
     }
   </style>
 </head>
 <body>
+  <header class="brandbar">
+    <div class="brand">
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2.5 4 5.5v6c0 4.6 3.2 8.4 8 10 4.8-1.6 8-5.4 8-10v-6L12 2.5Z"
+                fill="#fff" opacity="0.18"/>
+          <path d="M12 2.6 4 5.6v5.9c0 4.5 3.1 8.2 8 9.9 4.9-1.7 8-5.4 8-9.9V5.6L12 2.6Z"
+                stroke="#fff" stroke-width="1.6" fill="none"/>
+          <path d="M8.4 12.2l2.5 2.5 4.7-5" stroke="#fff" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <strong>iAM Smart</strong>
+        <span>+ CorpID · 企業數碼身份</span>
+      </div>
+    </div>
+    <div class="brand-tag">Digital Corporate Identity · Secure Login</div>
+  </header>
+
   <main class="panel">
     <section class="hero">
-      <h1>CorpID Login Flow</h1>
-      <div class="sub">點擊 Login 後，系統會由 project 呼叫 corpid-helper lib 進行 iAM 與 CorpID 的 token 交換，並在此頁顯示步驟進度。</div>
+      <h1>Secure Corporate Login</h1>
+      <div class="sub">點擊下方按鈕以 iAM Smart 身份登入，系統會呼叫 corpid-helper 進行 CorpID token 交換，並於下方清單顯示步驟進度。</div>
     </section>
 
     <section class="content">
       <div class="actions">
-        <button id="loginBtn">Login with iAM Smart + CorpID</button>
+        <button id="loginBtn" class="iam-btn" type="button">
+          <svg class="lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2" fill="#fff" opacity="0.9"/>
+            <path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <circle cx="12" cy="15" r="1.5" fill="#3AA08D"/>
+          </svg>
+          <span class="label">
+            Login with iAM Smart + CorpID
+            <small>以企業數碼身份安全登入</small>
+          </span>
+        </button>
         <div id="stateBox" class="state-box">state: (尚未開始)</div>
       </div>
 
-      <ol id="steps" class="step-list"></ol>
+      <div class="collapsible" id="checklistToggle" type="button">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Login Progress Checklist</span>
+        <span class="c-tag" id="checklistTag">7 steps</span>
+      </div>
+      <div class="collapsible-content" id="checklistContent">
+        <div class="collapsible-inner">
+          <ol id="steps" class="step-list"></ol>
+        </div>
+      </div>
+
       <div id="message" class="footer"></div>
+
       <div id="selectCompanyCard" class="select-company-card">
         <div id="selectCompanyTitle" class="select-company-title">Select Company</div>
         <div class="select-company-row">
           <select id="companySelect"></select>
-          <button id="companyConfirmBtn" type="button">Confirm Company</button>
+          <button id="companyConfirmBtn" class="mini-btn" type="button">Confirm Company</button>
         </div>
         <div class="prefill-actions">
           <button id="prefillBtn" type="button">Prefill Button</button>
           <button id="anonPrefillBtn" type="button">Anon Prefill Button</button>
         </div>
       </div>
-      <pre id="tokenCard" class="token-card"></pre>
+
+      <div class="collapsible" id="logToggle" type="button">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Response Log</span>
+        <span class="c-tag">iAM / CorpID token + checklist</span>
+      </div>
+      <div class="collapsible-content" id="logContent">
+        <div class="collapsible-inner">
+          <pre id="tokenCard" class="token-card"></pre>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -275,6 +403,31 @@
     const prefillBtn = document.getElementById("prefillBtn");
     const anonPrefillBtn = document.getElementById("anonPrefillBtn");
 
+    // Collapsible elements
+    const checklistToggle = document.getElementById("checklistToggle");
+    const checklistContent = document.getElementById("checklistContent");
+    const logToggle = document.getElementById("logToggle");
+    const logContent = document.getElementById("logContent");
+
+    function toggleCollapse(btn, content) {
+      const open = content.classList.toggle("open");
+      btn.classList.toggle("open", open);
+    }
+    checklistToggle.addEventListener("click", () => toggleCollapse(checklistToggle, checklistContent));
+    logToggle.addEventListener("click", () => toggleCollapse(logToggle, logContent));
+    function openChecklist() {
+      if (!checklistContent.classList.contains("open")) {
+        checklistContent.classList.add("open");
+        checklistToggle.classList.add("open");
+      }
+    }
+    function openLog() {
+      if (!logContent.classList.contains("open")) {
+        logContent.classList.add("open");
+        logToggle.classList.add("open");
+      }
+    }
+
     let state = getStateFromUrl() || localStorage.getItem("corpid_demo_state") || "";
     let timer = null;
 
@@ -293,6 +446,7 @@
       msgEl.textContent = "正在跳轉至登入...";
       tokenCard.style.display = "none";
       selectCompanyCard.style.display = "none";
+      openChecklist();
       window.location.href = "/start-login";
     });
 
@@ -368,11 +522,17 @@
           if (data.tokenSummary) {
             tokenCard.style.display = "block";
             tokenCard.textContent = data.tokenSummary;
+            openLog();
           }
           clearInterval(timer);
           loginBtn.disabled = false;
         } else if (data.progress.status === "ERROR") {
           msgEl.textContent = "流程失敗: " + (data.progress.errorMessage || "unknown error");
+          if (data.tokenSummary) {
+            tokenCard.style.display = "block";
+            tokenCard.textContent = data.tokenSummary;
+          }
+          openLog();
           clearInterval(timer);
           loginBtn.disabled = false;
         }
