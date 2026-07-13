@@ -407,23 +407,49 @@
       margin: 12px 0 2px; letter-spacing: .02em;
     }
     .corp-btn-sign { background: linear-gradient(135deg, #eaf3fb, #eef5fb); }
-    .corp-result {
-      margin-top: 14px;
-      padding: 12px 14px;
-      border: 1px solid #d7e9e2;
-      border-radius: 12px;
-      background: #0f2233;
-      color: #c8f0e4;
-      font-size: 12px;
-      line-height: 1.55;
+    .corp-status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .corp-status.ok { background: #e7f6ef; color: #137a5b; border: 1px solid #bfe6d4; }
+    .corp-status.err { background: #fdeceb; color: #b3261e; border: 1px solid #f4c4be; }
+    .corp-status .spinner {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid currentColor; border-top-color: transparent;
+      display: inline-block; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Corp API log inside the right drawer */
+    .corp-log { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .log-entry {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      line-height: 1.5;
       font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 320px;
-      overflow: auto;
+      border: 1px solid var(--line);
+      background: #f7fafc;
     }
-    .corp-result .ok { color: #7ee0c2; font-weight: 700; }
-    .corp-result .err { color: #ffb4a8; font-weight: 700; }
+    .log-entry.ok { border-color: #bfe6d4; background: #f1faf6; }
+    .log-entry.err { border-color: #f4c4be; background: #fdf3f1; }
+    .log-entry.ok { color: #0f2233; }
+    .log-entry.err { color: #7a1f18; }
+
+    .step-badge {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 16px; text-align: center;
+    }
+    .step.done .step-badge { color: #137a5b; }
+    .step.failed .step-badge { color: #b3261e; }
 
     /* ---- HKIC modal ---- */
     .modal-overlay {
@@ -560,7 +586,7 @@
             <button id="anonSignIntegratedBtn" class="corp-btn corp-btn-sign" type="button">Anon Corp + Sign</button>
           </div>
         </div>
-        <div id="corpApiResult" class="corp-result" hidden></div>
+        <div id="corpStatus" class="corp-status" hidden></div>
       </div>
     </section>
   </main>
@@ -597,7 +623,7 @@
 
     <div class="drawer-tabs">
       <button class="drawer-tab active" id="checklistToggle" type="button" data-tab="checklist">
-        Checklist <span class="t-count" id="checklistTag">7</span>
+        Checklist <span class="t-count" id="checklistTag">11</span>
       </button>
       <button class="drawer-tab" id="logToggle" type="button" data-tab="log">
         Response Log
@@ -610,6 +636,7 @@
       </div>
       <div class="tab-pane" id="logContent">
         <pre id="tokenCard" class="token-card"></pre>
+        <div id="corpLog" class="corp-log"></div>
         <div class="log-empty" id="logEmpty">尚未有 token / checklist 記錄。</div>
       </div>
     </div>
@@ -638,7 +665,11 @@
       "Step 4. 透過 lib 交換 iAM token",
       "Step 5. 透過 lib 交換 CorpID token",
       "Step 6. CorpID Login 完成",
-      "Step 7. Select Company"
+      "Step 7. Select Company",
+      "Step 8. Form Filling（formFilling / anonFormFilling）",
+      "Step 9. Signing（signing 3 signTypes）",
+      "Step 10. Anon Signing（anonSigning 3 signTypes）",
+      "Step 11. Done"
     ];
 
     const loginBtn = document.getElementById("loginBtn");
@@ -662,7 +693,8 @@
     const anonSignPersonalBtn = document.getElementById("anonSignPersonalBtn");
     const anonSignCorpBtn = document.getElementById("anonSignCorpBtn");
     const anonSignIntegratedBtn = document.getElementById("anonSignIntegratedBtn");
-    const corpApiResult = document.getElementById("corpApiResult");
+    const corpStatus = document.getElementById("corpStatus");
+    const corpLog = document.getElementById("corpLog");
     const hkicOverlay = document.getElementById("hkicOverlay");
     const hkicInput = document.getElementById("hkicInput");
     const hkicConfirm = document.getElementById("hkicConfirm");
@@ -807,28 +839,67 @@
     async function runCorpApi(label, path) {
       if (!state) return;
       setCorpButtonsDisabled(true);
-      corpApiResult.hidden = false;
-      corpApiResult.innerHTML = '<span class="ok">呼叫中…</span> ' + label + ' → ' + path;
+      corpStatus.hidden = false;
+      corpStatus.className = "corp-status";
+      corpStatus.innerHTML = '<span class="spinner"></span> 呼叫中… ' + label;
       try {
         const res = await fetch(path + (path.includes("?") ? "&" : "?") + "state=" + encodeURIComponent(state), { method: "POST" });
         const data = await res.json().catch(() => ({}));
         const r = data.corpApi;
         if (r) {
-          let html = '<span class="' + (r.ok ? "ok" : "err") + '">' + (r.ok ? "✓ " : "✗ ") + label + " (" + r.api + ")</span>\n";
-          html += "Endpoint: " + r.endpoint + "\n";
-          html += "Request:\n" + (r.requestJson || "(n/a)") + "\n";
-          if (r.ok) html += "Response:\n" + (r.responseJson || "(empty)");
-          else html += "Error: " + (r.error || "unknown");
-          corpApiResult.textContent = html;
+          const ok = !!r.ok;
+          corpStatus.className = "corp-status " + (ok ? "ok" : "err");
+          corpStatus.textContent = (ok ? "✓ " : "✗ ") + label + " (" + r.api + ")";
+          appendCorpLog(label, r);
+          markCorpChecklist(r.api, ok);
           openLog();
         } else {
-          corpApiResult.textContent = "回應無 corpApi 欄位: " + JSON.stringify(data).slice(0, 500);
+          corpStatus.className = "corp-status err";
+          corpStatus.textContent = "回應無 corpApi 欄位";
+          appendCorpLog(label, { ok: false, api: label, endpoint: path, requestJson: "", responseJson: "", error: "no corpApi field: " + JSON.stringify(data).slice(0, 300) });
         }
         await fetchProgress();
       } catch (ex) {
-        corpApiResult.textContent = "呼叫失敗: " + ex.message;
+        corpStatus.className = "corp-status err";
+        corpStatus.textContent = "呼叫失敗: " + ex.message;
+        appendCorpLog(label, { ok: false, api: label, endpoint: path, requestJson: "", responseJson: "", error: ex.message });
       } finally {
         setCorpButtonsDisabled(false);
+      }
+    }
+
+    function appendCorpLog(label, r) {
+      const empty = document.getElementById("logEmpty");
+      if (empty) empty.hidden = true;
+      const entry = document.createElement("div");
+      entry.className = "log-entry " + (r.ok ? "ok" : "err");
+      const time = new Date().toLocaleTimeString("en-GB");
+      let body = "";
+      body += "[" + time + "] " + label + " (" + (r.api || "") + ")\n";
+      body += "Endpoint: " + (r.endpoint || "") + "\n";
+      body += "Request:\n" + (r.requestJson || "(n/a)") + "\n";
+      if (r.ok) body += "Response:\n" + (r.responseJson || "(empty)") + "\n";
+      else body += "Error: " + (r.error || "unknown") + "\n";
+      entry.textContent = body;
+      corpLog.appendChild(entry);
+      corpLog.scrollTop = corpLog.scrollHeight;
+    }
+
+    // Mark the matching corp e-service step in the drawer checklist.
+    const CORP_STEP_MAP = {
+      formFilling: 8,
+      anonFormFilling: 8,
+      signing: 9,
+      anonSigning: 10
+    };
+    function markCorpChecklist(api, ok) {
+      const stepNo = CORP_STEP_MAP[api];
+      if (!stepNo) return;
+      const li = document.querySelector('#steps li[data-step="' + stepNo + '"]');
+      if (li) {
+        li.classList.add(ok ? "done" : "failed");
+        const badge = li.querySelector(".step-badge");
+        if (badge) badge.textContent = ok ? "✓" : "✗";
       }
     }
 
@@ -973,6 +1044,8 @@
 
     function renderSteps(progress) {
       stepsEl.innerHTML = "";
+      const tag = document.getElementById("checklistTag");
+      if (tag) tag.textContent = String(STEP_NAMES.length);
       const current = progress.currentStep || 0;
       const isErr = progress.status === "ERROR";
 
@@ -980,6 +1053,7 @@
         const stepNo = idx + 1;
         const li = document.createElement("li");
         li.className = "step";
+        li.dataset.step = stepNo;
 
         let status = "pending";
         if (stepNo < current) status = "done";
@@ -995,12 +1069,17 @@
         label.className = "name";
         label.textContent = name;
 
+        const badge = document.createElement("span");
+        badge.className = "step-badge";
+        badge.textContent = "";
+
         const state = document.createElement("span");
         state.className = "status " + status;
         state.textContent = status;
 
         li.appendChild(dot);
         li.appendChild(label);
+        li.appendChild(badge);
         li.appendChild(state);
         stepsEl.appendChild(li);
       });
