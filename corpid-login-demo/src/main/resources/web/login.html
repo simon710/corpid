@@ -623,7 +623,7 @@
 
     <div class="drawer-tabs">
       <button class="drawer-tab active" id="checklistToggle" type="button" data-tab="checklist">
-        Checklist <span class="t-count" id="checklistTag">11</span>
+        Checklist <span class="t-count" id="checklistTag">7</span>
       </button>
       <button class="drawer-tab" id="logToggle" type="button" data-tab="log">
         Response Log
@@ -665,12 +665,17 @@
       "Step 4. 透過 lib 交換 iAM token",
       "Step 5. 透過 lib 交換 CorpID token",
       "Step 6. CorpID Login 完成",
-      "Step 7. Select Company",
-      "Step 8. Form Filling（formFilling / anonFormFilling）",
-      "Step 9. Signing（signing 3 signTypes）",
-      "Step 10. Anon Signing（anonSigning 3 signTypes）",
-      "Step 11. Done"
+      "Step 7. Select Company"
     ];
+
+    // Corp e-service steps are appended to the checklist only when their button is clicked.
+    const CORP_STEP_DEFS = {
+      formFilling: { no: 8, name: "Step 8. Form Filling（formFilling / anonFormFilling）" },
+      signing: { no: 9, name: "Step 9. Signing（signing 3 signTypes）" },
+      anonSigning: { no: 10, name: "Step 10. Anon Signing（anonSigning 3 signTypes）" }
+    };
+    const addedCorpSteps = new Set();
+    const corpStepStatus = {};
 
     const loginBtn = document.getElementById("loginBtn");
     const stepsEl = document.getElementById("steps");
@@ -885,22 +890,42 @@
       corpLog.scrollTop = corpLog.scrollHeight;
     }
 
-    // Mark the matching corp e-service step in the drawer checklist.
-    const CORP_STEP_MAP = {
-      formFilling: 8,
-      anonFormFilling: 8,
-      signing: 9,
-      anonSigning: 10
-    };
+    // Append a corp e-service step to the checklist only when its button is clicked.
     function markCorpChecklist(api, ok) {
-      const stepNo = CORP_STEP_MAP[api];
-      if (!stepNo) return;
-      const li = document.querySelector('#steps li[data-step="' + stepNo + '"]');
-      if (li) {
-        li.classList.add(ok ? "done" : "failed");
-        const badge = li.querySelector(".step-badge");
-        if (badge) badge.textContent = ok ? "✓" : "✗";
+      const def = CORP_STEP_DEFS[api];
+      if (!def) return;
+      const stepNo = def.no;
+      let li = document.querySelector('#steps li[data-step="' + stepNo + '"]');
+      if (!li) {
+        // First time this corp step is triggered -> append it to the checklist.
+        li = document.createElement("li");
+        li.className = "step";
+        li.dataset.step = stepNo;
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        const label = document.createElement("span");
+        label.className = "name";
+        label.textContent = def.name;
+        const badge = document.createElement("span");
+        badge.className = "step-badge";
+        const state = document.createElement("span");
+        state.className = "status";
+        li.appendChild(dot);
+        li.appendChild(label);
+        li.appendChild(badge);
+        li.appendChild(state);
+        stepsEl.appendChild(li);
+        addedCorpSteps.add(api);
+        const tag = document.getElementById("checklistTag");
+        if (tag) tag.textContent = String(STEP_NAMES.length + addedCorpSteps.size);
       }
+      li.classList.remove("pending", "done", "failed", "active");
+      li.classList.add(ok ? "done" : "failed");
+      corpStepStatus[api] = ok;
+      const badge = li.querySelector(".step-badge");
+      if (badge) badge.textContent = ok ? "✓" : "✗";
+      const state = li.querySelector(".status");
+      if (state) state.textContent = ok ? "done" : "failed";
     }
 
     function setCorpButtonsDisabled(disabled) {
@@ -1045,7 +1070,7 @@
     function renderSteps(progress) {
       stepsEl.innerHTML = "";
       const tag = document.getElementById("checklistTag");
-      if (tag) tag.textContent = String(STEP_NAMES.length);
+      if (tag) tag.textContent = String(STEP_NAMES.length + addedCorpSteps.size);
       const current = progress.currentStep || 0;
       const isErr = progress.status === "ERROR";
 
@@ -1077,6 +1102,34 @@
         state.className = "status " + status;
         state.textContent = status;
 
+        li.appendChild(dot);
+        li.appendChild(label);
+        li.appendChild(badge);
+        li.appendChild(state);
+        stepsEl.appendChild(li);
+      });
+
+      // Re-append any corp e-service steps that were triggered in this session,
+      // so they survive the periodic re-render from fetchProgress().
+      addedCorpSteps.forEach((api) => {
+        const def = CORP_STEP_DEFS[api];
+        if (!def) return;
+        const li = document.createElement("li");
+        li.className = "step";
+        li.dataset.step = def.no;
+        const ok = corpStepStatus[api];
+        li.classList.add(ok ? "done" : (ok === false ? "failed" : "pending"));
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        const label = document.createElement("span");
+        label.className = "name";
+        label.textContent = def.name;
+        const badge = document.createElement("span");
+        badge.className = "step-badge";
+        badge.textContent = ok ? "✓" : (ok === false ? "✗" : "");
+        const state = document.createElement("span");
+        state.className = "status " + (ok ? "done" : (ok === false ? "failed" : "pending"));
+        state.textContent = ok ? "done" : (ok === false ? "failed" : "pending");
         li.appendChild(dot);
         li.appendChild(label);
         li.appendChild(badge);
