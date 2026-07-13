@@ -438,6 +438,7 @@ public class LoginService extends BaseService {
     private static void handleCorpFormFilling(
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
+        if (handlePreflight(exchange)) return;
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
             return;
@@ -457,6 +458,7 @@ public class LoginService extends BaseService {
     private static void handleCorpAnonFormFilling(
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
+        if (handlePreflight(exchange)) return;
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendJson(exchange, 405, errorNode("Method Not Allowed"));
             return;
@@ -473,6 +475,7 @@ public class LoginService extends BaseService {
     private static void handleCorpSigning(
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
+        if (handlePreflight(exchange)) return;
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
             return;
@@ -494,6 +497,7 @@ public class LoginService extends BaseService {
     private static void handleCorpAnonSigning(
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
+        if (handlePreflight(exchange)) return;
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendJson(exchange, 405, errorNode("Method Not Allowed"));
             return;

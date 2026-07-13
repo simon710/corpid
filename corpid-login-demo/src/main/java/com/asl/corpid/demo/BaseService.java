@@ -17,7 +17,24 @@ import java.util.Map;
 public abstract class BaseService {
     protected static final ObjectMapper MAPPER = new ObjectMapper();
 
+    protected static void addCorsHeaders(HttpExchange exchange) {
+        var h = exchange.getResponseHeaders();
+        h.set("Access-Control-Allow-Origin", "*");
+        h.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        h.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        h.set("Access-Control-Max-Age", "86400");
+    }
+
+    /** Reply to a CORS preflight (OPTIONS) request and return true if handled. */
+    protected static boolean handlePreflight(HttpExchange exchange) throws IOException {
+        if (!"OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) return false;
+        addCorsHeaders(exchange);
+        exchange.sendResponseHeaders(204, -1);
+        return true;
+    }
+
     protected static void sendText(HttpExchange exchange, int status, String body, String contentType) throws IOException {
+        addCorsHeaders(exchange);
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.sendResponseHeaders(status, bytes.length);
