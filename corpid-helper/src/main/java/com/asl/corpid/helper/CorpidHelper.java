@@ -376,6 +376,23 @@ public class CorpidHelper {
         throw new CorpidException("Unsupported content format in response");
     }
 
+    /**
+     * Call a CorpID e-service (corp domain) API with the shared HMAC-SHA256 signed
+     * headers and CEK-encrypted content (when {@code encryptContent} is true).
+     * Reuses the same signing + encryption machinery as the token exchange.
+     */
+    public JsonNode callCorpApi(String path, Map<String, Object> body, boolean encryptContent) {
+        CekInfo cekInfo = ensureCek();
+        String requestBody = encryptContent
+                ? writeJson(Map.of("content",
+                    CryptoUtils.encryptAesGcmBase64(writeJson(body).getBytes(StandardCharsets.UTF_8), cekInfo.keyBytes())))
+                : writeJson(body);
+        SignedHeaders signed = createSignedHeaders(config.getClientId(), config.getClientSecret(), requestBody);
+        JsonNode root = postJson(config.getCorpidDomain() + path, signed, requestBody);
+        ensureSuccess(root);
+        return root;
+    }
+
     private void ensureSuccess(JsonNode root) {
         String code = root.path("code").asText("");
         if ("M00000".equals(code) || "D00000".equals(code)) {

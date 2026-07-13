@@ -375,6 +375,78 @@
     .status.active { color: var(--warn); }
     .status.error { color: var(--err); }
 
+    /* ---- Corp e-Service card ---- */
+    .corp-card {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      display: none;
+    }
+    .corp-card-title { font-size: 14px; font-weight: 800; color: var(--navy); }
+    .corp-sub { font-size: 12px; color: var(--muted); margin: 4px 0 12px; line-height: 1.5; }
+    .corp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .corp-btn {
+      padding: 12px 10px;
+      border: 1px solid #d4e3ec;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f3faf8, #eef5fb);
+      color: var(--navy);
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      transition: transform .08s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .corp-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(58,160,141,.18); border-color: var(--iam-teal); }
+    .corp-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .corp-sign-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--navy); }
+    .corp-sign-row select { flex: 1; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px; }
+    .corp-result {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid #d7e9e2;
+      border-radius: 12px;
+      background: #0f2233;
+      color: #c8f0e4;
+      font-size: 12px;
+      line-height: 1.55;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .corp-result .ok { color: #7ee0c2; font-weight: 700; }
+    .corp-result .err { color: #ffb4a8; font-weight: 700; }
+
+    /* ---- HKIC modal ---- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,34,51,.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 60; padding: 20px;
+      animation: fade .15s ease;
+    }
+    .modal {
+      width: 100%; max-width: 420px;
+      background: #fff; border-radius: 16px;
+      padding: 22px; box-shadow: 0 24px 60px rgba(15,34,51,.35);
+    }
+    .modal-title { font-size: 16px; font-weight: 800; color: var(--navy); }
+    .modal-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin: 8px 0 14px; }
+    .modal-desc code { background: #eef2f6; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+    .modal label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .modal input {
+      width: 100%; padding: 11px 12px;
+      border: 1px solid var(--line); border-radius: 10px;
+      font-size: 15px; letter-spacing: .05em;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .modal-btn { padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 700; cursor: pointer; border: 1px solid transparent; }
+    .modal-btn.ghost { background: #fff; border-color: var(--line); color: var(--muted); }
+    .modal-btn.primary { background: linear-gradient(135deg, var(--iam-teal), var(--iam-blue)); color: #fff; }
+    .modal-err { margin-top: 12px; color: var(--err); font-size: 12.5px; font-weight: 600; }
+
     /* ---- Log ---- */
     .token-card {
       margin: 0;
@@ -456,6 +528,27 @@
           <button id="anonPrefillBtn" type="button">Anon Prefill Button</button>
         </div>
       </div>
+
+      <!-- ===== Corp e-Service APIs (form filling / signing) ===== -->
+      <div id="corpServicesCard" class="corp-card">
+        <div class="corp-card-title">Corp e-Service APIs</div>
+        <div class="corp-sub">以下呼叫 CorpID corp-domain API（form filling / signing）。需要 login + select company 後方可使用（anon 除外）。</div>
+        <div class="corp-grid">
+          <button id="formFillingBtn" class="corp-btn" type="button">Form Filling</button>
+          <button id="anonFormFillingBtn" class="corp-btn" type="button">Anon Form Filling</button>
+          <button id="signBtn" class="corp-btn" type="button">Signing</button>
+          <button id="anonSignBtn" class="corp-btn" type="button">Anon Signing</button>
+        </div>
+        <div class="corp-sign-row">
+          <label for="signTypeSelect">Sign Type</label>
+          <select id="signTypeSelect">
+            <option value="PERSONAL_SIGN">PERSONAL_SIGN（個人 iAM Smart）</option>
+            <option value="CORPID_SIGN">CORPID_SIGN（公司 chop）</option>
+            <option value="INTEGRATED_SIGN">INTEGRATED_SIGN（個人 + 公司 chop）</option>
+          </select>
+        </div>
+        <div id="corpApiResult" class="corp-result" hidden></div>
+      </div>
     </section>
   </main>
 
@@ -509,6 +602,21 @@
     </div>
   </aside>
 
+  <!-- ===== HKIC modal for anonymous signing ===== -->
+  <div class="modal-overlay" id="hkicOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="輸入 HKIC">
+      <div class="modal-title">Anonymous Signing · 輸入 HKIC</div>
+      <div class="modal-desc">匿名簽署需要 HKIC 號碼。系統會以 SHA-256（只取識別符，不含 check digit）再 Base64 計出 <code>HKICHash</code> 傳送（§4.16）。</div>
+      <label for="hkicInput">HKIC（例如 A123456）</label>
+      <input id="hkicInput" type="text" inputmode="text" placeholder="A123456" autocomplete="off" />
+      <div class="modal-actions">
+        <button id="hkicCancel" class="modal-btn ghost" type="button">取消</button>
+        <button id="hkicConfirm" class="modal-btn primary" type="button">確認並簽署</button>
+      </div>
+      <div class="modal-err" id="hkicErr" hidden></div>
+    </div>
+  </div>
+
   <script>
     const STEP_NAMES = [
       "Step 1. 建立登入請求（project）",
@@ -532,6 +640,18 @@
     const companyConfirmBtn = document.getElementById("companyConfirmBtn");
     const prefillBtn = document.getElementById("prefillBtn");
     const anonPrefillBtn = document.getElementById("anonPrefillBtn");
+    const corpServicesCard = document.getElementById("corpServicesCard");
+    const formFillingBtn = document.getElementById("formFillingBtn");
+    const anonFormFillingBtn = document.getElementById("anonFormFillingBtn");
+    const signBtn = document.getElementById("signBtn");
+    const anonSignBtn = document.getElementById("anonSignBtn");
+    const signTypeSelect = document.getElementById("signTypeSelect");
+    const corpApiResult = document.getElementById("corpApiResult");
+    const hkicOverlay = document.getElementById("hkicOverlay");
+    const hkicInput = document.getElementById("hkicInput");
+    const hkicConfirm = document.getElementById("hkicConfirm");
+    const hkicCancel = document.getElementById("hkicCancel");
+    const hkicErr = document.getElementById("hkicErr");
 
     // Drawer + tabs
     const drawer = document.getElementById("drawer");
@@ -623,6 +743,74 @@
       await runPrefill("anon");
     });
 
+    // ---- Corp e-Service API buttons ----
+    formFillingBtn.addEventListener("click", async () => {
+      await runCorpApi("formFilling", "/api/corp/formFilling");
+    });
+    anonFormFillingBtn.addEventListener("click", async () => {
+      await runCorpApi("anonFormFilling", "/api/corp/anonFormFilling");
+    });
+    signBtn.addEventListener("click", async () => {
+      const signType = signTypeSelect.value;
+      await runCorpApi("signing", "/api/corp/signing?signType=" + encodeURIComponent(signType));
+    });
+    anonSignBtn.addEventListener("click", () => {
+      // Anon signing requires HKIC -> open modal first
+      hkicErr.hidden = true;
+      hkicInput.value = "";
+      hkicOverlay.hidden = false;
+      hkicInput.focus();
+    });
+
+    // ---- HKIC modal for anon signing ----
+    function closeHkicModal() { hkicOverlay.hidden = true; }
+    hkicCancel.addEventListener("click", closeHkicModal);
+    hkicOverlay.addEventListener("click", (e) => { if (e.target === hkicOverlay) closeHkicModal(); });
+    hkicConfirm.addEventListener("click", async () => {
+      const hkic = hkicInput.value.trim();
+      if (!hkic) { hkicErr.textContent = "請輸入 HKIC"; hkicErr.hidden = false; return; }
+      if (!/^[A-Za-z][0-9]{6,7}[0-9A-Za-z]?$/.test(hkic)) {
+        hkicErr.textContent = "HKIC 格式唔對（應為 1 字母 + 6-7 數字 + 可選 check digit，例如 A123456）";
+        hkicErr.hidden = false; return;
+      }
+      closeHkicModal();
+      const signType = signTypeSelect.value;
+      await runCorpApi("anonSigning",
+        "/api/corp/anonSigning?signType=" + encodeURIComponent(signType) + "&hkic=" + encodeURIComponent(hkic));
+    });
+
+    async function runCorpApi(label, path) {
+      if (!state) return;
+      setCorpButtonsDisabled(true);
+      corpApiResult.hidden = false;
+      corpApiResult.innerHTML = '<span class="ok">呼叫中…</span> ' + label + ' → ' + path;
+      try {
+        const res = await fetch(path + (path.includes("?") ? "&" : "?") + "state=" + encodeURIComponent(state), { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        const r = data.corpApi;
+        if (r) {
+          let html = '<span class="' + (r.ok ? "ok" : "err") + '">' + (r.ok ? "✓ " : "✗ ") + label + " (" + r.api + ")</span>\n";
+          html += "Endpoint: " + r.endpoint + "\n";
+          html += "Request:\n" + (r.requestJson || "(n/a)") + "\n";
+          if (r.ok) html += "Response:\n" + (r.responseJson || "(empty)");
+          else html += "Error: " + (r.error || "unknown");
+          corpApiResult.textContent = html;
+          openLog();
+        } else {
+          corpApiResult.textContent = "回應無 corpApi 欄位: " + JSON.stringify(data).slice(0, 500);
+        }
+        await fetchProgress();
+      } catch (ex) {
+        corpApiResult.textContent = "呼叫失敗: " + ex.message;
+      } finally {
+        setCorpButtonsDisabled(false);
+      }
+    }
+
+    function setCorpButtonsDisabled(disabled) {
+      [formFillingBtn, anonFormFillingBtn, signBtn, anonSignBtn].forEach((b) => (b.disabled = disabled));
+    }
+
     function getStateFromUrl() {
       const params = new URLSearchParams(location.search);
       return params.get("state") || "";
@@ -651,9 +839,29 @@
           companyConfirmBtn.disabled = true;
           prefillBtn.disabled = false;
           anonPrefillBtn.disabled = false;
-          msgEl.textContent = "請按 Prefill Button 或 Anon Prefill Button。";
+          corpServicesCard.style.display = "block";
+          formFillingBtn.disabled = false;
+          signBtn.disabled = false;
+          anonFormFillingBtn.disabled = false;
+          anonSignBtn.disabled = false;
+          msgEl.textContent = "請按 Prefill Button 或 Anon Prefill Button，或直接使用 Corp e-Service API。";
         } else {
           selectCompanyCard.style.display = "none";
+        }
+
+        // Corp e-Service card: anon APIs need no CorpID token, so show them once a
+        // login flow has at least started (currentStep > 0). Non-anon APIs require the
+        // CorpID token, so gate those on hasCorpidToken.
+        if (state && data.progress && data.progress.currentStep > 0) {
+          corpServicesCard.style.display = "block";
+          const hasCorpid = data.progress.hasCorpidToken;
+          formFillingBtn.disabled = !hasCorpid;
+          signBtn.disabled = !hasCorpid;
+          anonFormFillingBtn.disabled = false;
+          anonSignBtn.disabled = false;
+          if (!hasCorpid && !(data.companySelection && data.companySelection.prefillReady)) {
+            msgEl.textContent = "已登入 iAM Smart。Anon Form Filling / Anon Signing 可直接使用；Form Filling / Signing 需要 CorpID token（若無請檢查 callback cAuthCode）。";
+          }
         }
 
         if (data.progress.status === "DONE") {

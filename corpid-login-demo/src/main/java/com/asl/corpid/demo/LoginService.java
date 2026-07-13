@@ -36,6 +36,18 @@ public class LoginService extends BaseService {
     private static final SelectCompanyService SELECT_COMPANY_SERVICE = new SelectCompanyService();
     private static final PrefillService PREFILL_SERVICE = new PrefillService();
 
+    static ObjectNode newObjectNode() {
+        return MAPPER.createObjectNode();
+    }
+
+    static String prettyJson(Object value) {
+        try {
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(value);
+        } catch (Exception ex) {
+            return String.valueOf(value);
+        }
+    }
+
     public static CorpidConfig importConfig() {
         Env env = Env.load();
         return CorpidConfig.builder()
@@ -64,6 +76,10 @@ public class LoginService extends BaseService {
         server.createContext("/api/progress", exchange -> handleProgress(exchange, flows));
         server.createContext("/api/company/select", exchange -> handleCompanySelect(exchange, flows));
         server.createContext("/api/prefill", exchange -> handlePrefill(exchange, flows));
+        server.createContext("/api/corp/formFilling", exchange -> handleCorpFormFilling(exchange, env, helper, flows));
+        server.createContext("/api/corp/anonFormFilling", exchange -> handleCorpAnonFormFilling(exchange, env, helper, flows));
+        server.createContext("/api/corp/signing", exchange -> handleCorpSigning(exchange, env, helper, flows));
+        server.createContext("/api/corp/anonSigning", exchange -> handleCorpAnonSigning(exchange, env, helper, flows));
         server.createContext(env.callbackPath, exchange -> handleCallback(exchange, env, helper, flows));
         if (!env.directLoginCallbackPath.equals(env.callbackPath)) {
             server.createContext(env.directLoginCallbackPath, exchange -> handleCallback(exchange, env, helper, flows));
@@ -368,6 +384,131 @@ public class LoginService extends BaseService {
         sendJson(exchange, 200, root);
     }
 
+    // ---- Corp e-service APIs (form filling / signing) -------------------------------
+
+    private static CorpApiService newCorpApiService(Env env, CorpidHelper helper) {
+        return new CorpApiService(helper, env.corpidDomain);
+    }
+
+    private static String corpSource(Env env) {
+        return env.source == null || env.source.isBlank() ? "PC_Browser" : env.source;
+    }
+
+    private static String corpRedirectUri(Env env) {
+        return env.callbackUri(LoginMode.DIFFERENT_DEVICE);
+    }
+
+    private static CorpApiService.SignType parseSignType(String value) {
+        if (value == null || value.isBlank()) {
+            return CorpApiService.SignType.PERSONAL_SIGN;
+        }
+        try {
+            return CorpApiService.SignType.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return CorpApiService.SignType.PERSONAL_SIGN;
+        }
+    }
+
+    private static ObjectNode respondCorpApi(HttpExchange exchange, FlowContext flow, CorpApiService.CorpApiResult result)
+            throws IOException {
+        if (result.ok()) {
+            flow.markCorpApi(result.api(), result.responseJson());
+        } else {
+            flow.markCorpApiError(result.api(), result.error());
+        }
+        ObjectNode root = MAPPER.createObjectNode();
+        root.put("state", flow.state);
+        root.set("progress", flow.snapshot());
+        root.set("companySelection", flow.companySelectionSnapshot());
+        if (flow.shouldExposeTokenSummary()) {
+            root.put("tokenSummary", flow.tokenSummary());
+        }
+        root.set("corpApi", result.toJson());
+        sendJson(exchange, result.ok() ? 200 : 422, root);
+        return root;
+    }
+
+    private static void handleCorpFormFilling(
+            HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
+    ) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            return;
+        }
+        String state = parseQuery(exchange.getRequestURI()).get("state");
+        FlowContext flow = state == null ? null : flows.get(state);
+        if (flow == null) {
+            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
+            return;
+        }
+        CorpApiService.CorpApiResult result = newCorpApiService(env, helper).formFilling(
+                flow.corpidToken, flow.state, corpSource(env), corpRedirectUri(env),
+                java.util.List.of("corpName", "brNo"), java.util.List.of("corpNameEn", "brNo"));
+        respondCorpApi(exchange, flow, result);
+    }
+
+    private static void handleCorpAnonFormFilling(
+            HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
+    ) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            return;
+        }
+        String state = parseQuery(exchange.getRequestURI()).get("state");
+        FlowContext flow = state == null ? null : flows.get(state);
+        if (flow == null) {
+            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
+            return;
+        }
+        CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonFormFilling(
+                corpSource(env), corpRedirectUri(env),
+                java.util.List.of("corpName", "brNo"), java.util.List.of("corpNameEn", "brNo"));
+        respondCorpApi(exchange, flow, result);
+    }
+
+    private static void handleCorpSigning(
+            HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
+    ) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            return;
+        }
+        Map<String, String> query = parseQuery(exchange.getRequestURI());
+        String state = query.get("state");
+        String signType = query.getOrDefault("signType", "PERSONAL_SIGN");
+        String documentName = query.getOrDefault("documentName", "Demo Document");
+        FlowContext flow = state == null ? null : flows.get(state);
+        if (flow == null) {
+            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
+            return;
+        }
+        CorpApiService.CorpApiResult result = newCorpApiService(env, helper).signing(
+                flow.corpidToken, flow.state, corpSource(env), corpRedirectUri(env), parseSignType(signType), documentName);
+        respondCorpApi(exchange, flow, result);
+    }
+
+    private static void handleCorpAnonSigning(
+            HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
+    ) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            return;
+        }
+        Map<String, String> query = parseQuery(exchange.getRequestURI());
+        String state = query.get("state");
+        String signType = query.getOrDefault("signType", "PERSONAL_SIGN");
+        String hkic = query.getOrDefault("hkic", "");
+        String documentName = query.getOrDefault("documentName", "Demo Document");
+        FlowContext flow = state == null ? null : flows.get(state);
+        if (flow == null) {
+            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
+            return;
+        }
+        CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonSigning(
+                corpSource(env), corpRedirectUri(env), parseSignType(signType), hkic, documentName);
+        respondCorpApi(exchange, flow, result);
+    }
+
     private static void handleCallback(
             HttpExchange exchange,
             Env env,
@@ -670,6 +811,9 @@ public class LoginService extends BaseService {
         private volatile int corpCount;
         private volatile boolean requiresCompanySelection;
         private volatile java.util.List<String> companyOptions;
+        private volatile String lastCorpApi;
+        private volatile String lastCorpApiResponse;
+        private volatile String lastCorpApiError;
 
         private FlowContext(String state, LoginMode mode) {
             this.state = state;
@@ -682,6 +826,9 @@ public class LoginService extends BaseService {
             this.corpCount = 1;
             this.requiresCompanySelection = false;
             this.companyOptions = java.util.List.of();
+            this.lastCorpApi = "";
+            this.lastCorpApiResponse = "";
+            this.lastCorpApiError = "";
         }
 
         private synchronized void markRunning(int step, String detail) {
@@ -708,6 +855,18 @@ public class LoginService extends BaseService {
             this.corpidUnavailableReason = reason;
         }
 
+        private synchronized void markCorpApi(String api, String responseJson) {
+            this.lastCorpApi = api;
+            this.lastCorpApiResponse = responseJson == null ? "" : responseJson;
+            this.lastCorpApiError = "";
+        }
+
+        private synchronized void markCorpApiError(String api, String error) {
+            this.lastCorpApi = api;
+            this.lastCorpApiResponse = "";
+            this.lastCorpApiError = error == null ? "" : error;
+        }
+
         private synchronized boolean shouldExposeTokenSummary() {
             return iamToken != null || corpidToken != null || "ERROR".equals(status);
         }
@@ -725,6 +884,9 @@ public class LoginService extends BaseService {
             node.put("checklistCompleted", corpidToken != null && prefillData != null && !prefillData.isEmpty());
             node.put("corpidUnavailableReason", corpidUnavailableReason == null ? "" : corpidUnavailableReason);
             node.put("prefillMode", prefillMode == null ? "" : prefillMode);
+            node.put("lastCorpApi", lastCorpApi);
+            node.put("lastCorpApiResponse", lastCorpApiResponse);
+            node.put("lastCorpApiError", lastCorpApiError);
             return node;
         }
 
