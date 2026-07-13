@@ -40,6 +40,13 @@ public class LoginService extends BaseService {
         return MAPPER.createObjectNode();
     }
 
+    static ObjectNode errorNode(String message) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("error", message);
+        node.put("ok", false);
+        return node;
+    }
+
     static String prettyJson(Object value) {
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(value);
@@ -451,15 +458,12 @@ public class LoginService extends BaseService {
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            sendJson(exchange, 405, errorNode("Method Not Allowed"));
             return;
         }
+        // Anonymous form filling does NOT require a CorpID login / state.
         String state = parseQuery(exchange.getRequestURI()).get("state");
-        FlowContext flow = state == null ? null : flows.get(state);
-        if (flow == null) {
-            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
-            return;
-        }
+        FlowContext flow = (state == null || state.isBlank()) ? new FlowContext("anon", LoginMode.DIFFERENT_DEVICE) : flows.getOrDefault(state, new FlowContext(state, LoginMode.DIFFERENT_DEVICE));
         CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonFormFilling(
                 corpSource(env), corpRedirectUri(env),
                 java.util.List.of("corpName", "brNo"), java.util.List.of("corpNameEn", "brNo"));
@@ -491,19 +495,16 @@ public class LoginService extends BaseService {
             HttpExchange exchange, Env env, CorpidHelper helper, ConcurrentMap<String, FlowContext> flows
     ) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-            sendText(exchange, 405, "Method Not Allowed", "text/plain; charset=utf-8");
+            sendJson(exchange, 405, errorNode("Method Not Allowed"));
             return;
         }
+        // Anonymous signing does NOT require a CorpID login / state.
         Map<String, String> query = parseQuery(exchange.getRequestURI());
         String state = query.get("state");
         String signType = query.getOrDefault("signType", "PERSONAL_SIGN");
         String hkic = query.getOrDefault("hkic", "");
         String documentName = query.getOrDefault("documentName", "Demo Document");
-        FlowContext flow = state == null ? null : flows.get(state);
-        if (flow == null) {
-            sendText(exchange, 404, "State not found", "text/plain; charset=utf-8");
-            return;
-        }
+        FlowContext flow = (state == null || state.isBlank()) ? new FlowContext("anon", LoginMode.DIFFERENT_DEVICE) : flows.getOrDefault(state, new FlowContext(state, LoginMode.DIFFERENT_DEVICE));
         CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonSigning(
                 corpSource(env), corpRedirectUri(env), parseSignType(signType), hkic, documentName);
         respondCorpApi(exchange, flow, result);
