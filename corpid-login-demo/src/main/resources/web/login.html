@@ -401,6 +401,12 @@
     .corp-btn:disabled { opacity: .5; cursor: not-allowed; }
     .corp-sign-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--navy); }
     .corp-sign-row select { flex: 1; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px; }
+    .corp-sign-block { margin-top: 14px; }
+    .corp-sign-label {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      margin: 12px 0 2px; letter-spacing: .02em;
+    }
+    .corp-btn-sign { background: linear-gradient(135deg, #eaf3fb, #eef5fb); }
     .corp-result {
       margin-top: 14px;
       padding: 12px 14px;
@@ -537,16 +543,22 @@
         <div class="corp-grid">
           <button id="formFillingBtn" class="corp-btn" type="button">Form Filling</button>
           <button id="anonFormFillingBtn" class="corp-btn" type="button">Anon Form Filling</button>
-          <button id="signBtn" class="corp-btn" type="button">Signing</button>
-          <button id="anonSignBtn" class="corp-btn" type="button">Anon Signing</button>
         </div>
-        <div class="corp-sign-row">
-          <label for="signTypeSelect">Sign Type</label>
-          <select id="signTypeSelect">
-            <option value="PERSONAL_SIGN">PERSONAL_SIGN（個人 iAM Smart）</option>
-            <option value="CORPID_SIGN">CORPID_SIGN（公司 chop）</option>
-            <option value="INTEGRATED_SIGN">INTEGRATED_SIGN（個人 + 公司 chop）</option>
-          </select>
+        <div class="corp-sign-block">
+          <div class="corp-sign-label">Signing（需要 CorpID token）</div>
+          <div class="corp-grid">
+            <button id="signPersonalBtn" class="corp-btn corp-btn-sign" type="button">Sign（個人）</button>
+            <button id="signCorpBtn" class="corp-btn corp-btn-sign" type="button">Corp Sign（公司 chop）</button>
+            <button id="signIntegratedBtn" class="corp-btn corp-btn-sign" type="button">Corp + Sign（個人+公司）</button>
+          </div>
+        </div>
+        <div class="corp-sign-block">
+          <div class="corp-sign-label">Anon Signing（需輸入 HKIC）</div>
+          <div class="corp-grid">
+            <button id="anonSignPersonalBtn" class="corp-btn corp-btn-sign" type="button">Anon Sign（個人）</button>
+            <button id="anonSignCorpBtn" class="corp-btn corp-btn-sign" type="button">Anon Corp Sign</button>
+            <button id="anonSignIntegratedBtn" class="corp-btn corp-btn-sign" type="button">Anon Corp + Sign</button>
+          </div>
         </div>
         <div id="corpApiResult" class="corp-result" hidden></div>
       </div>
@@ -644,9 +656,12 @@
     const corpServicesCard = document.getElementById("corpServicesCard");
     const formFillingBtn = document.getElementById("formFillingBtn");
     const anonFormFillingBtn = document.getElementById("anonFormFillingBtn");
-    const signBtn = document.getElementById("signBtn");
-    const anonSignBtn = document.getElementById("anonSignBtn");
-    const signTypeSelect = document.getElementById("signTypeSelect");
+    const signPersonalBtn = document.getElementById("signPersonalBtn");
+    const signCorpBtn = document.getElementById("signCorpBtn");
+    const signIntegratedBtn = document.getElementById("signIntegratedBtn");
+    const anonSignPersonalBtn = document.getElementById("anonSignPersonalBtn");
+    const anonSignCorpBtn = document.getElementById("anonSignCorpBtn");
+    const anonSignIntegratedBtn = document.getElementById("anonSignIntegratedBtn");
     const corpApiResult = document.getElementById("corpApiResult");
     const hkicOverlay = document.getElementById("hkicOverlay");
     const hkicInput = document.getElementById("hkicInput");
@@ -751,17 +766,26 @@
     anonFormFillingBtn.addEventListener("click", async () => {
       await runCorpApi("anonFormFilling", "/api/corp/anonFormFilling");
     });
-    signBtn.addEventListener("click", async () => {
-      const signType = signTypeSelect.value;
-      await runCorpApi("signing", "/api/corp/signing?signType=" + encodeURIComponent(signType));
+    signPersonalBtn.addEventListener("click", async () => {
+      await runCorpApi("signing", "/api/corp/signing?signType=PERSONAL_SIGN");
     });
-    anonSignBtn.addEventListener("click", () => {
-      // Anon signing requires HKIC -> open modal first
+    signCorpBtn.addEventListener("click", async () => {
+      await runCorpApi("signing", "/api/corp/signing?signType=CORPID_SIGN");
+    });
+    signIntegratedBtn.addEventListener("click", async () => {
+      await runCorpApi("signing", "/api/corp/signing?signType=INTEGRATED_SIGN");
+    });
+    anonSignPersonalBtn.addEventListener("click", () => openHkicModal("PERSONAL_SIGN"));
+    anonSignCorpBtn.addEventListener("click", () => openHkicModal("CORPID_SIGN"));
+    anonSignIntegratedBtn.addEventListener("click", () => openHkicModal("INTEGRATED_SIGN"));
+
+    function openHkicModal(signType) {
       hkicErr.hidden = true;
       hkicInput.value = "";
       hkicOverlay.hidden = false;
+      hkicOverlay.dataset.signType = signType;
       hkicInput.focus();
-    });
+    }
 
     // ---- HKIC modal for anon signing ----
     function closeHkicModal() { hkicOverlay.hidden = true; }
@@ -775,7 +799,7 @@
         hkicErr.hidden = false; return;
       }
       closeHkicModal();
-      const signType = signTypeSelect.value;
+      const signType = hkicOverlay.dataset.signType || "PERSONAL_SIGN";
       await runCorpApi("anonSigning",
         "/api/corp/anonSigning?signType=" + encodeURIComponent(signType) + "&hkic=" + encodeURIComponent(hkic));
     });
@@ -809,7 +833,13 @@
     }
 
     function setCorpButtonsDisabled(disabled) {
-      [formFillingBtn, anonFormFillingBtn, signBtn, anonSignBtn].forEach((b) => (b.disabled = disabled));
+      [formFillingBtn, anonFormFillingBtn, signPersonalBtn, signCorpBtn, signIntegratedBtn,
+       anonSignPersonalBtn, anonSignCorpBtn, anonSignIntegratedBtn].forEach((b) => (b.disabled = disabled));
+    }
+
+    function setSignButtonsDisabled(disabled) {
+      [signPersonalBtn, signCorpBtn, signIntegratedBtn,
+       anonSignPersonalBtn, anonSignCorpBtn, anonSignIntegratedBtn].forEach((b) => (b.disabled = disabled));
     }
 
     function getStateFromUrl() {
@@ -842,9 +872,8 @@
           anonPrefillBtn.disabled = false;
           corpServicesCard.style.display = "block";
           formFillingBtn.disabled = false;
-          signBtn.disabled = false;
+          setSignButtonsDisabled(false);
           anonFormFillingBtn.disabled = false;
-          anonSignBtn.disabled = false;
           msgEl.textContent = "請按 Prefill Button 或 Anon Prefill Button，或直接使用 Corp e-Service API。";
         } else {
           selectCompanyCard.style.display = "none";
@@ -857,9 +886,13 @@
           corpServicesCard.style.display = "block";
           const hasCorpid = data.progress.hasCorpidToken;
           formFillingBtn.disabled = !hasCorpid;
-          signBtn.disabled = !hasCorpid;
+          signPersonalBtn.disabled = !hasCorpid;
+          signCorpBtn.disabled = !hasCorpid;
+          signIntegratedBtn.disabled = !hasCorpid;
           anonFormFillingBtn.disabled = false;
-          anonSignBtn.disabled = false;
+          anonSignPersonalBtn.disabled = false;
+          anonSignCorpBtn.disabled = false;
+          anonSignIntegratedBtn.disabled = false;
           if (!hasCorpid && !(data.companySelection && data.companySelection.prefillReady)) {
             msgEl.textContent = "已登入 iAM Smart。Anon Form Filling / Anon Signing 可直接使用；Form Filling / Signing 需要 CorpID token（若無請檢查 callback cAuthCode）。";
           }
