@@ -463,13 +463,20 @@ public class LoginService extends BaseService {
             sendJson(exchange, 405, errorNode("Method Not Allowed"));
             return;
         }
-        // Anonymous form filling does NOT require a CorpID login / state.
-        String state = parseQuery(exchange.getRequestURI()).get("state");
-        FlowContext flow = (state == null || state.isBlank()) ? new FlowContext("anon", LoginMode.DIFFERENT_DEVICE) : flows.getOrDefault(state, new FlowContext(state, LoginMode.DIFFERENT_DEVICE));
-        CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonFormFilling(
-                corpSource(env), corpRedirectUri(env),
-                java.util.List.of("corpName", "brNo"), java.util.List.of("corpNameEn", "brNo"));
-        respondCorpApi(exchange, flow, result);
+        try {
+            // Anonymous form filling does NOT require a CorpID login / state.
+            String state = parseQuery(exchange.getRequestURI()).get("state");
+            FlowContext flow = (state == null || state.isBlank()) ? new FlowContext("anon", LoginMode.DIFFERENT_DEVICE) : flows.getOrDefault(state, new FlowContext(state, LoginMode.DIFFERENT_DEVICE));
+            CorpApiService.CorpApiResult result = newCorpApiService(env, helper).anonFormFilling(
+                    corpSource(env), corpRedirectUri(env),
+                    java.util.List.of("corpName", "brNo"), java.util.List.of("corpNameEn", "brNo"));
+            respondCorpApi(exchange, flow, result);
+        } catch (Exception ex) {
+            // Never let an uncaught exception reset the connection (which the browser
+            // reports as "Failed to fetch" with 0 bytes). Always return JSON so the
+            // frontend can render the real error.
+            sendJson(exchange, 500, errorNode("anonFormFilling error: " + ex.getMessage()));
+        }
     }
 
     private static void handleCorpSigning(
