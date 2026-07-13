@@ -191,7 +191,8 @@ public class CorpApiService {
     }
 
     private static String newBusinessId() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 36);
+        // A UUID string (8-4-4-4-12 with dashes) is exactly 36 chars.
+        return UUID.randomUUID().toString();
     }
 
     private static List<String> defaultIfEmpty(List<String> value, List<String> fallback) {
